@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e2242">
+<meta name="color-scheme" content="light">
+<title>Presupuestos · Escribanía Gaitán Franco</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="img/favicon-48.png" type="image/png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Presupuestos">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="barra">
+  <img src="img/icono-192.png" alt="" class="barra-logo">
+  <div class="barra-titulo">
+    <strong>Presupuestos</strong>
+    <span>Escribanía Gaitán Franco</span>
+  </div>
+  <nav class="barra-nav">
+    <button data-vista="editor" class="activo" title="Presupuesto">Nuevo</button>
+    <button data-vista="historial" title="Historial">Historial</button>
+    <button data-vista="ajustes" title="Ajustes" aria-label="Ajustes">⚙</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ EDITOR ============ -->
+  <section id="vista-editor" class="vista activa">
+    <div class="editor-cabecera">
+      <h1 id="ed-titulo">Nuevo presupuesto</h1>
+      <button class="btn-texto" id="btn-nuevo">+ Empezar otro</button>
+    </div>
+
+    <div class="tarjeta">
+      <div class="grilla">
+        <label class="campo"><span>Fecha</span><input type="date" id="f-fecha"></label>
+        <label class="campo"><span>Trámite</span><select id="f-tramite"></select></label>
+        <label class="campo ancho"><span>Cliente</span><input type="text" id="f-cliente" placeholder="Nombre y apellido" autocomplete="off"></label>
+        <label class="campo ancho"><span>Concepto</span><input type="text" id="f-concepto" placeholder="Detalle: vehículo, inmueble, etc." autocomplete="off"></label>
+      </div>
+    </div>
+
+    <div class="tarjeta" id="bloque-monto">
+      <h2 id="lbl-monto">Precio de venta</h2>
+      <div class="grilla">
+        <div class="campo ancho">
+          <span>Monto</span>
+          <div class="monto-con-moneda">
+            <div class="moneda" role="group" aria-label="Moneda">
+              <button type="button" data-moneda="USD" class="activo">USD</button>
+              <button type="button" data-moneda="GS">Gs.</button>
+            </div>
+            <input type="text" inputmode="decimal" id="f-monto" class="num" placeholder="0">
+          </div>
+        </div>
+        <div class="campo" id="campo-cotizacion">
+          <span>Cotización USD (Gs.)</span>
+          <div class="con-boton">
+            <input type="text" inputmode="decimal" id="f-cotizacion" class="num" placeholder="0">
+            <button type="button" class="btn-icono" id="btn-bcp" title="Traer cotización del BCP">↻</button>
+          </div>
+          <small id="nota-cotizacion" class="nota"></small>
+        </div>
+        <label class="campo"><span>Jornal mínimo (Gs.)</span><input type="text" inputmode="numeric" id="f-jornal" class="num"></label>
+        <div class="campo ancho equivalente"><span>Equivalente en guaraníes</span><strong id="v-equivalente">Gs. 0</strong></div>
+      </div>
+    </div>
+
+    <div class="tarjeta seccion" data-seccion="tributos">
+      <h2>Tributos y tasas</h2>
+      <div class="filas"></div>
+      <button type="button" class="btn-texto agregar" data-seccion="tributos">+ Agregar concepto</button>
+      <div class="subtotal"><span>Subtotal tributos</span><strong data-subtotal="tributos">0</strong></div>
+    </div>
+
+    <div class="tarjeta seccion" data-seccion="gastos">
+      <h2>Gastos</h2>
+      <div class="filas"></div>
+      <button type="button" class="btn-texto agregar" data-seccion="gastos">+ Agregar concepto</button>
+      <div class="subtotal"><span>Subtotal gastos</span><strong data-subtotal="gastos">0</strong></div>
+    </div>
+
+    <div class="tarjeta seccion" data-seccion="honorarios">
+      <h2>Honorarios</h2>
+      <div class="fila">
+        <div class="fila-nombre">Honorarios profesionales
+          <small class="nota" id="nota-honorarios"></small>
+        </div>
+        <div class="fila-valores">
+          <input type="text" inputmode="numeric" id="f-honorarios" class="num" placeholder="0">
+          <button type="button" class="btn-icono restaurar" id="rest-honorarios" title="Volver al valor sugerido" hidden>↺</button>
+        </div>
+      </div>
+      <div class="fila">
+        <div class="fila-nombre descuento">Descuento sobre honorarios</div>
+        <div class="fila-valores">
+          <input type="text" inputmode="numeric" id="f-descuento" class="num" placeholder="0">
+        </div>
+      </div>
+      <div class="subtotal"><span>Subtotal honorarios</span><strong data-subtotal="honorarios">0</strong></div>
+    </div>
+
+    <div class="espacio-barra"></div>
+  </section>
+
+  <!-- ============ HISTORIAL ============ -->
+  <section id="vista-historial" class="vista">
+    <div class="editor-cabecera">
+      <h1>Historial</h1>
+      <button class="btn-texto" id="btn-actualizar-hist">↻ Actualizar</button>
+    </div>
+    <input type="search" id="buscar" class="buscador" placeholder="Buscar por cliente, trámite o número">
+    <p class="nota" id="hist-estado"></p>
+    <ul id="lista-historial" class="lista"></ul>
+  </section>
+
+  <!-- ============ AJUSTES ============ -->
+  <section id="vista-ajustes" class="vista">
+    <div class="editor-cabecera"><h1>Ajustes</h1></div>
+
+    <div class="tarjeta">
+      <h2>Conexión con Google Drive</h2>
+      <label class="campo ancho"><span>Dirección del servicio (Apps Script)</span><input type="url" id="a-url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label class="campo"><span>PIN</span><input type="password" id="a-pin" inputmode="numeric" autocomplete="off"></label>
+      <button type="button" class="btn" id="btn-probar">Probar conexión</button>
+      <p class="nota" id="estado-conexion"></p>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Valores generales</h2>
+      <p class="nota">Se comparten entre todos los dispositivos.</p>
+      <div class="grilla">
+        <label class="campo"><span>Jornal mínimo (Gs.)</span><input type="text" inputmode="numeric" id="a-jornal" class="num"></label>
+        <label class="campo"><span>Validez (días)</span><input type="number" id="a-validez" min="1"></label>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Montos sugeridos por concepto</h2>
+      <p class="nota">Se completan solos al empezar un presupuesto. Dejá vacío lo que no quieras sugerir. Los conceptos con porcentaje se calculan sobre el monto de la operación.</p>
+      <div id="lista-sugeridos"></div>
+    </div>
+
+    <button type="button" class="btn primario ancho-total" id="btn-guardar-ajustes">Guardar ajustes</button>
+    <p class="nota centrado" id="version-app"></p>
+  </section>
+</main>
+
+<!-- Barra inferior del editor -->
+<footer class="barra-total" id="barra-total">
+  <div class="total-bloque">
+    <span>Total a pagar</span>
+    <strong id="v-total">Gs. 0</strong>
+    <small id="v-total-usd"></small>
+  </div>
+  <div class="acciones">
+    <button type="button" class="btn" id="btn-vista">Ver PDF</button>
+    <button type="button" class="btn primario" id="btn-guardar">Guardar</button>
+  </div>
+</footer>
+
+<!-- Diálogo de resultado -->
+<dialog id="dlg">
+  <h3 id="dlg-titulo"></h3>
+  <p id="dlg-texto"></p>
+  <div class="dlg-acciones" id="dlg-acciones"></div>
+</dialog>
+
+<div id="aviso" class="aviso" role="status"></div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="reglas.js"></script>
+<script src="pdf.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
