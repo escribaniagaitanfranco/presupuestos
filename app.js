@@ -57,7 +57,9 @@ let P = null;               // presupuesto en edición
 let HIST = store.get('historial', {}); // id -> presupuesto
 const ultimoPDF = { id: null, blob: null, nombre: null };
 
-const tramite = id => REGLAS.tramites.find(t => t.id === id) || REGLAS.tramites[0];
+// Trámites: los de reglas.js más los creados en Ajustes (se comparten entre dispositivos).
+const todosTramites = () => [...REGLAS.tramites, ...((AJ && AJ.tramitesPropios) || [])];
+const tramite = id => todosTramites().find(t => t.id === id) || REGLAS.tramites.find(t => t.id === 'otro') || REGLAS.tramites[0];
 const urlServicio = () => store.get('url', '') || CONFIG.urlServicio;
 const pin = () => store.get('pin', '');
 
@@ -373,7 +375,7 @@ async function traerCotizacion(forzar = false) {
 // =====================================================================
 function initEditor() {
   const sel = $('#f-tramite');
-  REGLAS.tramites.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  poblarTramites();
 
   $('#f-fecha').addEventListener('change', e => {
     P.fecha = e.target.value || hoyISO();
@@ -384,6 +386,12 @@ function initEditor() {
   $('#f-concepto').addEventListener('input', e => { P.concepto = e.target.value; guardarBorrador(); });
 
   sel.addEventListener('change', e => {
+    if (e.target.value === '__nuevo') {
+      e.target.value = P.tramiteId;
+      mostrarVista('ajustes');
+      editarTramite(null);
+      return;
+    }
     const t = tramite(e.target.value);
     const previas = P.filas;
     const nuevas = filasDeTramite(t);
@@ -663,6 +671,124 @@ function confirmarBorrado(p) {
 }
 
 // =====================================================================
+//  TRÁMITES PROPIOS (Ajustes)
+// =====================================================================
+function poblarTramites() {
+  const sel = $('#f-tramite');
+  sel.innerHTML = '';
+  REGLAS.tramites.forEach(t => sel.add(new Option(t.nombre, t.id)));
+  const propios = AJ.tramitesPropios || [];
+  if (propios.length) {
+    const g = document.createElement('optgroup'); g.label = 'Trámites agregados';
+    propios.forEach(t => g.appendChild(new Option(t.nombre, t.id)));
+    sel.appendChild(g);
+  }
+  sel.add(new Option('+ Agregar trámite…', '__nuevo'));
+  if (P) sel.value = P.tramiteId;
+}
+
+function renderTramitesPropios() {
+  const ul = $('#lista-tramites');
+  ul.innerHTML = '';
+  const propios = AJ.tramitesPropios || [];
+  if (!propios.length) { ul.innerHTML = '<li class="nota">Todavía no agregaste trámites.</li>'; return; }
+  propios.forEach(t => {
+    const li = document.createElement('li');
+    li.className = 'tramite-item';
+    li.innerHTML = `<div><strong></strong><small class="nota"></small></div>
+      <div class="item-acciones"><button data-a="editar">Editar</button><button data-a="quitar" class="borrar">Quitar</button></div>`;
+    li.querySelector('strong').textContent = t.nombre;
+    li.querySelector('small').textContent = `${t.conceptos.length} conceptos${t.monto ? ' · con monto' : ''}${t.escala ? ' · escala de honorarios' : ''}`;
+    li.addEventListener('click', e => {
+      if (e.target.dataset.a === 'editar') editarTramite(t.id);
+      if (e.target.dataset.a === 'quitar') {
+        dialogo(`¿Quitar el trámite "${t.nombre}"?`, 'Los presupuestos ya guardados no se modifican.', [
+          { txt: 'Cancelar' },
+          { txt: 'Quitar', primario: true, fn: async () => {
+            AJ.tramitesPropios = propios.filter(x => x.id !== t.id);
+            await persistirAjustes('Trámite quitado.');
+            renderTramitesPropios(); poblarTramites();
+          } },
+        ]);
+      }
+    });
+    ul.appendChild(li);
+  });
+}
+
+// Abre el formulario de trámite (id null = nuevo).
+function editarTramite(id) {
+  const t = id ? (AJ.tramitesPropios || []).find(x => x.id === id) : null;
+  const f = $('#form-tramite');
+  f.hidden = false;
+  f.dataset.id = id || '';
+  $('#t-titulo').textContent = t ? 'Editar trámite' : 'Nuevo trámite';
+  $('#t-nombre').value = t ? t.nombre : '';
+  $('#t-usa-monto').checked = t ? !!t.monto : false;
+  $('#t-monto').value = t && t.monto ? t.monto : 'Monto';
+  $('#t-escala').checked = t ? !!t.escala : false;
+  $('#t-observacion').checked = t ? !!t.observacion : false;
+  const elegidos = new Set(t ? t.conceptos : ['gastos_admin', 'testimonio']);
+  const cont = $('#t-conceptos');
+  cont.innerHTML = '';
+  ['tributos', 'gastos'].forEach(sec => {
+    const h = document.createElement('h3'); h.textContent = sec === 'tributos' ? 'Tributos y tasas' : 'Gastos';
+    cont.appendChild(h);
+    Object.entries(REGLAS.conceptos).filter(([, c]) => c.seccion === sec).forEach(([key, c]) => {
+      const l = document.createElement('label'); l.className = 'check';
+      l.innerHTML = `<input type="checkbox" value="${key}"><span></span>`;
+      l.querySelector('span').textContent = c.nombre;
+      l.querySelector('input').checked = elegidos.has(key);
+      cont.appendChild(l);
+    });
+  });
+  actualizarCampoMonto();
+  f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => $('#t-nombre').focus(), 300);
+}
+
+function actualizarCampoMonto() {
+  $('#t-monto-campo').hidden = !$('#t-usa-monto').checked;
+  $('#t-escala').disabled = !$('#t-usa-monto').checked;
+  if (!$('#t-usa-monto').checked) $('#t-escala').checked = false;
+}
+
+async function guardarTramite() {
+  const nombre = $('#t-nombre').value.trim();
+  if (!nombre) { aviso('Falta el nombre del trámite.'); $('#t-nombre').focus(); return; }
+  const id = $('#form-tramite').dataset.id || 'p_' + Date.now().toString(36);
+  const t = {
+    id, nombre,
+    monto: $('#t-usa-monto').checked ? ($('#t-monto').value.trim() || 'Monto') : null,
+    escala: $('#t-usa-monto').checked && $('#t-escala').checked,
+    observacion: $('#t-observacion').checked,
+    conceptos: $$('#t-conceptos input:checked').map(i => i.value),
+  };
+  const lista = (AJ.tramitesPropios || []).filter(x => x.id !== id);
+  const previo = (AJ.tramitesPropios || []).findIndex(x => x.id === id);
+  if (previo >= 0) lista.splice(previo, 0, t); else lista.push(t);
+  AJ.tramitesPropios = lista;
+  await persistirAjustes(`Trámite "${nombre}" guardado.`);
+  $('#form-tramite').hidden = true;
+  renderTramitesPropios(); poblarTramites();
+}
+
+async function persistirAjustes(mensaje) {
+  store.set('ajustes', AJ);
+  if (urlServicio()) {
+    try { await api('guardarAjustes', { ajustes: AJ }); aviso(mensaje || 'Ajustes guardados en todos los dispositivos.'); }
+    catch (e) { aviso('Guardado en este dispositivo. Drive: ' + e.message); }
+  } else aviso(mensaje || 'Ajustes guardados.');
+}
+
+function initTramites() {
+  $('#btn-nuevo-tramite').addEventListener('click', () => editarTramite(null));
+  $('#t-usa-monto').addEventListener('change', actualizarCampoMonto);
+  $('#btn-cancelar-tramite').addEventListener('click', () => { $('#form-tramite').hidden = true; });
+  $('#btn-guardar-tramite').addEventListener('click', guardarTramite);
+}
+
+// =====================================================================
 //  AJUSTES
 // =====================================================================
 function renderAjustes() {
@@ -709,6 +835,7 @@ function renderAjustes() {
     });
   });
   $('#a-observacion').value = AJ.observacion ?? REGLAS.observacionPorDefecto;
+  renderTramitesPropios();
   $('#version-app').textContent = `Versión ${CONFIG.version}`;
 }
 
@@ -738,11 +865,7 @@ function initAjustes() {
     $$('#lista-sugeridos input[data-fijo]').forEach(i => { AJ.fijos[i.dataset.fijo] = parseNum(i.value); });
     AJ.observacion = $('#a-observacion').value.trim();
     if (P) refrescar();
-    store.set('ajustes', AJ);
-    if (urlServicio()) {
-      try { await api('guardarAjustes', { ajustes: AJ }); aviso('Ajustes guardados en todos los dispositivos.'); }
-      catch (e) { aviso('Guardado en este dispositivo. Drive: ' + e.message); }
-    } else aviso('Ajustes guardados.');
+    await persistirAjustes();
   });
 }
 
@@ -750,7 +873,7 @@ async function leerAjustesRemotos() {
   if (!urlServicio()) return;
   try {
     const r = await api('leerAjustes');
-    if (r.ajustes) { AJ = Object.assign(AJ, r.ajustes); store.set('ajustes', AJ); }
+    if (r.ajustes) { AJ = Object.assign(AJ, r.ajustes); store.set('ajustes', AJ); poblarTramites(); }
   } catch (_) {}
 }
 
@@ -792,6 +915,7 @@ function mostrarVista(v) {
 function init() {
   initEditor();
   initAjustes();
+  initTramites();
   initBloqueo();
   $$('.barra-nav button').forEach(b => b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
   $('#buscar').addEventListener('input', renderHistorial);

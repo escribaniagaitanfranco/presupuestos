@@ -170,6 +170,19 @@ dialog p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
 }
 .aviso.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* Ajustes: trámites */
+.tramite-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tramite-item .nota { display: block; }
+.tramite-item .item-acciones { margin-top: 0; flex: none; }
+#lista-tramites { margin-bottom: 10px; }
+.form-tramite { margin-top: 14px; padding-top: 14px; border-top: 2px solid var(--navy); display: flex; flex-direction: column; gap: 10px; }
+.form-tramite h3 { margin: 0; color: var(--navy); font-size: 16px; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14.5px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--navy); flex: none; }
+.t-conceptos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.t-conceptos h3 { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 6px 0 0; }
+@media (max-width: 520px) { .t-conceptos { grid-template-columns: 1fr; } }
+
 /* Ajustes: conexión */
 .con-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .avanzado { margin-top: 14px; font-size: 13px; color: var(--muted); }

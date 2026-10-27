@@ -1,5 +1,5 @@
 // Service worker: guarda la app para que abra rápido y funcione sin conexión.
-const CACHE = 'presupuestos-v1.5.1';
+const CACHE = 'presupuestos-v1.6.0';
 const ARCHIVOS = [
   './', 'index.html', 'app.css', 'app.js', 'pdf.js', 'reglas.js', 'config.js',
   'vendor/jspdf.umd.min.js', 'manifest.webmanifest',

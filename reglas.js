@@ -66,7 +66,7 @@ const REGLAS = {
   tramites: [
     {
       id: 'vehiculo', nombre: 'Transferencia de vehículo', monto: 'Precio de venta', escala: true, observacion: true,
-      conceptos: ['tasa_judicial', 'tasa_fija', 'tasas_automotor', 'chapa_mercosur', 'cedula_verde', 'imp_municipal',
+      conceptos: ['tasa_judicial', 'tasa_fija', 'tasas_automotor', 'chapa_mercosur', 'cedula_verde',
                   'gastos_admin', 'cert_dominio', 'libre_disposicion', 'vigencia_poder', 'vigencia_separacion',
                   'testimonio', 'inscripcion', 'cancelacion_prenda', 'cert_catastral'],
     },
