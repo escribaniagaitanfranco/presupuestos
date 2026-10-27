@@ -495,12 +495,16 @@ async function guardar() {
   try {
     await subirADrive(P);
     guardarEnHistorialLocal(P);
-    $('#ed-titulo').textContent = `Presupuesto N.º ${P.numero}`;
-    guardarBorrador();
-    dialogo('Guardado en Drive', `Presupuesto N.º ${P.numero} · Gs. ${fmt(P.total)}`, [
-      ...(P.driveUrl ? [{ txt: 'Abrir en Drive', href: P.driveUrl }] : []),
+    // Se limpia el formulario (mismo trámite) y el diálogo trabaja con la copia guardada.
+    const guardado = clonar(P);
+    cargarEnEditor(nuevoPresupuesto(guardado.tramiteId));
+    store.set('borrador', P);
+    traerCotizacion();
+    window.scrollTo(0, 0);
+    dialogo('Guardado en Drive', `Presupuesto N.º ${guardado.numero} · ${guardado.cliente} · Gs. ${fmt(guardado.total)}`, [
+      ...(guardado.driveUrl ? [{ txt: 'Abrir en Drive', href: guardado.driveUrl }] : []),
       { txt: 'Cerrar' },
-      { txt: 'Compartir', primario: true, fn: () => compartir(P) },
+      { txt: 'Compartir', primario: true, fn: () => compartir(guardado) },
     ]);
   } catch (e) {
     P.estado = 'pendiente'; P.actualizado = new Date().toISOString();
