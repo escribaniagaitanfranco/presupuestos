@@ -566,6 +566,7 @@ function renderHistorial() {
         <button data-a="compartir">Compartir</button>
         ${p.driveUrl ? '<a data-a="drive" target="_blank" rel="noopener">Drive</a>' : ''}
         ${p.estado === 'pendiente' ? '<button data-a="subir">Subir a Drive</button>' : ''}
+        <button data-a="borrar" class="borrar">Borrar</button>
       </div>`;
     li.querySelector('strong').textContent = p.cliente || 'Sin nombre';
     if (p.estado === 'pendiente') li.querySelector('strong').insertAdjacentHTML('beforeend', '<span class="etiqueta">Sin subir</span>');
@@ -581,6 +582,7 @@ function renderHistorial() {
         cargarEnEditor(n); mostrarVista('editor'); aviso('Copia lista para editar.');
       }
       if (a === 'compartir') { e.target.textContent = '…'; try { await compartir(clonar(p)); } finally { e.target.textContent = 'Compartir'; } }
+      if (a === 'borrar') return confirmarBorrado(p);
       if (a === 'subir') {
         e.target.textContent = 'Subiendo…';
         try { const q2 = await subirADrive(clonar(p)); guardarEnHistorialLocal(q2); aviso(`Subido: N.º ${q2.numero}`); renderHistorial(); }
@@ -589,6 +591,29 @@ function renderHistorial() {
     });
     ul.appendChild(li);
   });
+}
+
+function confirmarBorrado(p) {
+  const enDrive = p.estado === 'guardado';
+  dialogo(`¿Borrar el presupuesto${p.numero ? ' N.º ' + p.numero : ''}?`,
+    `${p.cliente || 'Sin nombre'} · Gs. ${fmt(p.total)}. ` +
+    (enDrive ? 'El PDF va a la papelera de Drive y se quita de la planilla.' : 'Se borra de este dispositivo.'), [
+      { txt: 'Cancelar' },
+      { txt: 'Borrar', primario: true, fn: async () => {
+        try {
+          if (enDrive) await api('borrar', { id: p.id });
+          delete HIST[p.id];
+          store.set('historial', HIST);
+          if (P && P.id === p.id) cargarEnEditor(nuevoPresupuesto(P.tramiteId));
+          renderHistorial();
+          aviso('Presupuesto borrado.');
+        } catch (e) {
+          aviso(e.message === 'Acción desconocida.'
+            ? 'Falta actualizar el script de Google para poder borrar.'
+            : 'No se pudo borrar: ' + e.message);
+        }
+      } },
+    ]);
 }
 
 // =====================================================================

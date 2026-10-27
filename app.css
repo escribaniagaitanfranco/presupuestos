@@ -142,6 +142,7 @@ input.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
   background: #fff; color: var(--navy); text-decoration: none; cursor: pointer; font-weight: 600;
 }
+.item-acciones .borrar { color: var(--red); margin-left: auto; }
 .etiqueta { font-size: 11px; padding: 2px 7px; border-radius: 99px; background: #fff3d6; color: #8a5a00; margin-left: 6px; font-weight: 600; }
 
 /* Ajustes: sugeridos */
