@@ -67,8 +67,49 @@ async function api(accion, datos = {}) {
   const res = await fetch(url, { method: 'POST', body: JSON.stringify({ accion, pin: pin(), ...datos }) });
   let j;
   try { j = await res.json(); } catch (_) { throw new Error('El servicio no respondió correctamente.'); }
-  if (!j.ok) throw new Error(j.error || 'Error del servicio.');
+  if (!j.ok) {
+    if (j.error === 'PIN incorrecto.' && accion !== 'ping') { store.set('pin', ''); mostrarBloqueo('El PIN cambió. Ingresá el nuevo.'); }
+    throw new Error(j.error || 'Error del servicio.');
+  }
   return j;
+}
+
+// ---------- Pantalla de ingreso con PIN ----------
+function mostrarBloqueo(mensaje = '') {
+  $('#bloqueo').hidden = false;
+  $('#pin-error').textContent = mensaje;
+  $('#pin-ingreso').value = '';
+  setTimeout(() => $('#pin-ingreso').focus(), 50);
+}
+
+function initBloqueo() {
+  $('#form-pin').addEventListener('submit', async e => {
+    e.preventDefault();
+    const valor = $('#pin-ingreso').value.trim();
+    if (!valor) return;
+    const btn = $('#btn-entrar');
+    btn.disabled = true; btn.textContent = 'Verificando…'; $('#pin-error').textContent = '';
+    const anterior = pin();
+    store.set('pin', valor);
+    try {
+      await api('ping');
+      $('#bloqueo').hidden = true;
+      despuesDeEntrar();
+    } catch (err) {
+      store.set('pin', anterior === valor ? '' : anterior);
+      $('#pin-error').textContent = err.message === 'PIN incorrecto.' ? 'PIN incorrecto.'
+        : 'No se pudo verificar (¿hay conexión a internet?).';
+      $('#pin-ingreso').select();
+    } finally {
+      btn.disabled = false; btn.textContent = 'Entrar';
+    }
+  });
+}
+
+// Lo que necesita conexión con Drive se hace una vez que se ingresó el PIN.
+function despuesDeEntrar() {
+  traerCotizacion();
+  leerAjustesRemotos();
 }
 
 // ---------- Avisos y diálogos ----------
@@ -546,7 +587,6 @@ function renderHistorial() {
 // =====================================================================
 function renderAjustes() {
   $('#a-url').value = urlServicio();
-  $('#a-pin').value = pin();
   $('#a-jornal').value = fmt(AJ.jornal);
   $('#a-validez').value = AJ.validezDias;
   const cont = $('#lista-sugeridos');
@@ -568,14 +608,20 @@ function renderAjustes() {
 
 function initAjustes() {
   $('#a-jornal').addEventListener('input', e => enmascarar(e.target));
+  $('#btn-salir').addEventListener('click', () => {
+    dialogo('¿Cerrar sesión?', 'Para volver a usar la app en este dispositivo vas a tener que ingresar el PIN.', [
+      { txt: 'Cancelar' },
+      { txt: 'Cerrar sesión', primario: true, fn: () => { store.set('pin', ''); mostrarBloqueo(); } },
+    ]);
+  });
   $('#btn-probar').addEventListener('click', async () => {
-    store.set('url', $('#a-url').value.trim()); store.set('pin', $('#a-pin').value.trim());
+    store.set('url', $('#a-url').value.trim());
     const est = $('#estado-conexion'); est.textContent = 'Probando…';
     try { const r = await api('ping'); est.textContent = `✓ Conectado. Carpeta en Drive: ${r.carpeta}`; await leerAjustesRemotos(); renderAjustes(); }
     catch (e) { est.textContent = '✗ ' + e.message; }
   });
   $('#btn-guardar-ajustes').addEventListener('click', async () => {
-    store.set('url', $('#a-url').value.trim()); store.set('pin', $('#a-pin').value.trim());
+    store.set('url', $('#a-url').value.trim());
     AJ.jornal = parseNum($('#a-jornal').value) || CONFIG.jornalPorDefecto;
     AJ.validezDias = parseInt($('#a-validez').value, 10) || CONFIG.validezPorDefecto;
     AJ.sugeridos = {};
@@ -611,15 +657,15 @@ function mostrarVista(v) {
 function init() {
   initEditor();
   initAjustes();
+  initBloqueo();
   $$('.barra-nav button').forEach(b => b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
   $('#buscar').addEventListener('input', renderHistorial);
   $('#btn-actualizar-hist').addEventListener('click', sincronizarHistorial);
 
   const borrador = store.get('borrador', null);
   cargarEnEditor(borrador && borrador.filas ? borrador : nuevoPresupuesto());
-  traerCotizacion();
-  leerAjustesRemotos();
   precargarImagenesPDF();
+  if (pin()) despuesDeEntrar(); else mostrarBloqueo();
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -125,10 +125,15 @@
 
     <div class="tarjeta">
       <h2>Conexión con Google Drive</h2>
-      <label class="campo ancho"><span>Dirección del servicio (Apps Script)</span><input type="url" id="a-url" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <label class="campo"><span>PIN</span><input type="password" id="a-pin" inputmode="numeric" autocomplete="off"></label>
-      <button type="button" class="btn" id="btn-probar">Probar conexión</button>
       <p class="nota" id="estado-conexion"></p>
+      <div class="con-botones">
+        <button type="button" class="btn" id="btn-probar">Probar conexión</button>
+        <button type="button" class="btn" id="btn-salir">Cerrar sesión en este dispositivo</button>
+      </div>
+      <details class="avanzado">
+        <summary>Avanzado</summary>
+        <label class="campo ancho"><span>Dirección del servicio (Apps Script)</span><input type="url" id="a-url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      </details>
     </div>
 
     <div class="tarjeta">
@@ -172,6 +177,18 @@
 </dialog>
 
 <div id="aviso" class="aviso" role="status"></div>
+
+<!-- Pantalla de ingreso con PIN -->
+<div id="bloqueo" class="bloqueo" hidden>
+  <form class="bloqueo-caja" id="form-pin" autocomplete="off">
+    <img src="img/icono-192.png" alt="Escribanía Gaitán Franco">
+    <h1>Presupuestos</h1>
+    <p class="nota">Escribanía Gaitán Franco</p>
+    <input type="password" id="pin-ingreso" inputmode="numeric" placeholder="PIN" aria-label="PIN" autocomplete="current-password">
+    <button type="submit" class="btn primario ancho-total" id="btn-entrar">Entrar</button>
+    <p class="nota error" id="pin-error"></p>
+  </form>
+</div>
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="config.js"></script>
