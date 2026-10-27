@@ -152,7 +152,7 @@ function nuevoPresupuesto(tramiteId = REGLAS.tramites[0].id) {
   return {
     id: uid(), numero: null, fecha: hoyISO(), cliente: '', concepto: '',
     tramiteId: t.id, tramiteNombre: t.nombre,
-    moneda: 'USD', monto: 0, municipio: 'capital',
+    moneda: 'GS', monto: 0, municipio: 'capital',
     cotizacion: ult ? ult.valor : 0, cotizacionFecha: ult ? ult.fecha : '', cotizacionFuente: ult ? 'BCP' : 'manual',
     jornal: Number(AJ.jornal) || 0,
     validezDias: Number(AJ.validezDias) || 30,
