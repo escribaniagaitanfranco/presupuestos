@@ -51,7 +51,7 @@ const store = {
 };
 
 // ---------- Estado ----------
-let AJ = Object.assign({ jornal: CONFIG.jornalPorDefecto, validezDias: CONFIG.validezPorDefecto, sugeridos: {}, porcentajes: {},
+let AJ = Object.assign({ jornal: CONFIG.jornalPorDefecto, validezDias: CONFIG.validezPorDefecto, sugeridos: {}, porcentajes: {}, fijos: {},
   observacion: REGLAS.observacionPorDefecto }, store.get('ajustes', {}));
 let P = null;               // presupuesto en edición
 let HIST = store.get('historial', {}); // id -> presupuesto
@@ -180,6 +180,17 @@ function pctConcepto(key, p = P) {
 }
 const fmtPct = n => String(n).replace('.', ',');
 
+// Monto fijo que se suma al porcentaje (p. ej. gastos administrativos del impuesto municipal).
+function fijoConcepto(key, p = P) {
+  const c = REGLAS.conceptos[key];
+  if (!c) return 0;
+  const variante = (p && p.municipio) || 'capital';
+  const clave = c.variantes ? `${key}.${variante}` : key;
+  const base = (c.variantes ? c.variantes[variante].fijo : c.fijo) || 0;
+  const aj = (AJ.fijos || {})[clave];
+  return aj !== undefined && aj !== null && aj !== '' ? Number(aj) : base;
+}
+
 function nombreConcepto(key, p = P) {
   const c = REGLAS.conceptos[key];
   if (!c) return '';
@@ -189,7 +200,9 @@ function nombreConcepto(key, p = P) {
 function sugerenciaFila(f, p = P) {
   const pct = pctConcepto(f.key, p);
   if (pct === null) return null;
-  return Math.round(montoGs(p) * pct / 100);
+  const mg = montoGs(p);
+  if (mg <= 0) return 0;
+  return Math.round(mg * pct / 100) + fijoConcepto(f.key, p);
 }
 
 function sugerenciaHonorarios(p = P) {
@@ -288,7 +301,10 @@ function refrescar() {
     if (imp !== activo) imp.value = f.importe ? fmt(f.importe) : '';
     const s = sugerenciaFila(f);
     const np = div.querySelector('.nota-pct');
-    if (np) np.textContent = `Sugerido: ${fmtPct(pctConcepto(f.key))} % del monto`;
+    if (np) {
+      const fijo = fijoConcepto(f.key);
+      np.textContent = `Sugerido: ${fmtPct(pctConcepto(f.key))} % del monto${fijo ? ` + Gs. ${fmt(fijo)} gastos adm.` : ''}`;
+    }
     const nom = div.querySelector('.fila-nombre > span');
     if (nom && nom.textContent !== f.nombre) nom.textContent = f.nombre;
     div.classList.toggle('manual', s !== null && !f.auto);
@@ -662,16 +678,23 @@ function renderAjustes() {
       if (c.pct) {
         // Conceptos con porcentaje: uno por variante (p. ej. Capital / Otros municipios).
         const claves = c.variantes
-          ? Object.keys(c.variantes).map(v => [`${key}.${v}`, `${c.nombre} - ${c.variantes[v].etiqueta}`, c.variantes[v].pct])
-          : [[key, c.nombre, c.pct]];
-        claves.forEach(([clave, nombre, base]) => {
+          ? Object.keys(c.variantes).map(v => [`${key}.${v}`, `${c.nombre} - ${c.variantes[v].etiqueta}`, c.variantes[v].pct, c.variantes[v].fijo])
+          : [[key, c.nombre, c.pct, c.fijo]];
+        claves.forEach(([clave, nombre, base, fijoBase]) => {
           const d = document.createElement('div'); d.className = 'sug';
-          d.innerHTML = `<span></span><div class="con-sufijo"><input type="text" inputmode="decimal" class="num" data-pct="${clave}"><span>% del monto</span></div>`;
+          d.innerHTML = `<span></span><div class="con-sufijo"><input type="text" inputmode="decimal" class="num" data-pct="${clave}"><span>% del monto</span></div>` +
+            (fijoBase !== undefined ? `<span class="sug-fijo">+ gastos adm. Gs.</span><input type="text" inputmode="numeric" class="num" data-fijo="${clave}">` : '');
           d.querySelector('span').textContent = nombre;
-          const inp = d.querySelector('input');
+          const inp = d.querySelector('input[data-pct]');
           const v = (AJ.porcentajes || {})[clave];
           inp.value = fmtPct(v !== undefined && v !== null && v !== '' ? v : base);
           inp.addEventListener('input', () => enmascarar(inp, 4));
+          const inpF = d.querySelector('input[data-fijo]');
+          if (inpF) {
+            const vf = (AJ.fijos || {})[clave];
+            inpF.value = fmt(vf !== undefined && vf !== null && vf !== '' ? vf : fijoBase);
+            inpF.addEventListener('input', () => enmascarar(inpF));
+          }
           cont.appendChild(d);
         });
         return;
@@ -711,6 +734,8 @@ function initAjustes() {
     $$('#lista-sugeridos input[data-key]').forEach(i => { const v = parseNum(i.value); if (v > 0) AJ.sugeridos[i.dataset.key] = v; });
     AJ.porcentajes = {};
     $$('#lista-sugeridos input[data-pct]').forEach(i => { if (i.value.trim() !== '') AJ.porcentajes[i.dataset.pct] = parseNum(i.value); });
+    AJ.fijos = {};
+    $$('#lista-sugeridos input[data-fijo]').forEach(i => { AJ.fijos[i.dataset.fijo] = parseNum(i.value); });
     AJ.observacion = $('#a-observacion').value.trim();
     if (P) refrescar();
     store.set('ajustes', AJ);

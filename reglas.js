@@ -32,6 +32,7 @@ const REGLAS = {
   // Catálogo de conceptos.
   //  seccion: 'tributos' | 'gastos'
   //  pct:     porcentaje sobre el monto de la operación en Gs. (sugerencia automática)
+  //  fijo:    monto fijo que se suma al porcentaje (solo si hay monto)
   //  PROVISORIO = porcentaje ficticio hasta recibir las tablas reales.
   conceptos: {
     tasa_judicial:      { nombre: 'Tasa judicial por transferencia', seccion: 'tributos', pct: 0.85 }, // PROVISORIO
@@ -41,8 +42,9 @@ const REGLAS = {
     cedula_verde:       { nombre: 'Cédula verde adicional', seccion: 'tributos' },
     imp_municipal:      { nombre: 'Imp. a la Transferencia Municipal', seccion: 'tributos', pct: 0.85,
                           variantes: {                                   // se elige en el presupuesto
-                            capital: { etiqueta: 'Capital', pct: 0.85 },          // PROVISORIO
-                            otros:   { etiqueta: 'Otros municipios', pct: 0.85 }, // PROVISORIO
+                            // fijo: gastos administrativos que se suman al porcentaje
+                            capital: { etiqueta: 'Capital', pct: 0.85, fijo: 30000 },          // pct PROVISORIO
+                            otros:   { etiqueta: 'Otros municipios', pct: 0.85, fijo: 30000 }, // pct PROVISORIO
                           } },
     tasas_registrales:  { nombre: 'Tasas registrales', seccion: 'tributos' },
 
