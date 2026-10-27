@@ -524,6 +524,11 @@ async function sincronizarHistorial() {
   est.textContent = 'Actualizando desde Drive…';
   try {
     const r = await api('listar');
+    // Si la planilla devolvió todo (menos de 300), lo que ya estaba subido y no figura fue borrado en Drive.
+    if (r.items.length < 300) {
+      const enDrive = new Set(r.items.map(it => it.id));
+      Object.keys(HIST).forEach(id => { if (HIST[id].estado === 'guardado' && !enDrive.has(id)) delete HIST[id]; });
+    }
     r.items.forEach(it => {
       const local = HIST[it.id];
       if (local && local.estado === 'pendiente' && (local.actualizado || '') > (it.actualizado || '')) return;
