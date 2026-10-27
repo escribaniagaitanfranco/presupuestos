@@ -652,6 +652,29 @@ async function leerAjustesRemotos() {
 }
 
 // =====================================================================
+//  Actualizaciones: compara con la versión publicada y recarga si hay una nueva
+// =====================================================================
+async function buscarActualizacion(manual = false) {
+  if (location.protocol === 'file:') return;
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    const { version } = await r.json();
+    if (!version || version === CONFIG.version) { if (manual) aviso(`Ya tenés la última versión (${CONFIG.version}).`); return; }
+    // Evita recargar en bucle si algo impide tomar la versión nueva.
+    if (!manual && store.get('actualizandoA', '') === version) return;
+    store.set('actualizandoA', version);
+    if (P) store.set('borrador', P);
+    if (manual) aviso('Actualizando…');
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update().catch(() => {});
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+    location.reload();
+  } catch (_) {
+    if (manual) aviso('No se pudo buscar la actualización (¿hay conexión?).');
+  }
+}
+
+// =====================================================================
 //  Navegación e inicio
 // =====================================================================
 function mostrarVista(v) {
@@ -677,8 +700,12 @@ function init() {
   if (pin()) despuesDeEntrar(); else mostrarBloqueo();
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
   }
+  $('#btn-actualizar').addEventListener('click', () => buscarActualizacion(true));
+  buscarActualizacion();
+  // En el celular la app suele quedar "dormida": se revisa también al volver a ella.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') buscarActualizacion(); });
 }
 
 document.addEventListener('DOMContentLoaded', init);

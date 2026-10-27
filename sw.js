@@ -1,5 +1,5 @@
 // Service worker: guarda la app para que abra rápido y funcione sin conexión.
-const CACHE = 'presupuestos-v1.1.2';
+const CACHE = 'presupuestos-v1.2.0';
 const ARCHIVOS = [
   './', 'index.html', 'app.css', 'app.js', 'pdf.js', 'reglas.js', 'config.js',
   'vendor/jspdf.umd.min.js', 'manifest.webmanifest',
@@ -21,9 +21,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (url.pathname.endsWith('/version.json')) return; // siempre directo a la red
   e.respondWith(
-    fetch(e.request)
-      .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); return r; })
+    // cache 'no-cache': siempre pregunta a GitHub si hay algo nuevo (evita copias viejas de hasta 10 min).
+    fetch(e.request.url, { cache: 'no-cache' })
+      .then(r => { if (r.ok) { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); } return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('index.html')))
   );
 });
