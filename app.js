@@ -51,7 +51,8 @@ const store = {
 };
 
 // ---------- Estado ----------
-let AJ = Object.assign({ jornal: CONFIG.jornalPorDefecto, validezDias: CONFIG.validezPorDefecto, sugeridos: {} }, store.get('ajustes', {}));
+let AJ = Object.assign({ jornal: CONFIG.jornalPorDefecto, validezDias: CONFIG.validezPorDefecto, sugeridos: {}, porcentajes: {},
+  observacion: REGLAS.observacionPorDefecto }, store.get('ajustes', {}));
 let P = null;               // presupuesto en edición
 let HIST = store.get('historial', {}); // id -> presupuesto
 const ultimoPDF = { id: null, blob: null, nombre: null };
@@ -151,7 +152,7 @@ function nuevoPresupuesto(tramiteId = REGLAS.tramites[0].id) {
   return {
     id: uid(), numero: null, fecha: hoyISO(), cliente: '', concepto: '',
     tramiteId: t.id, tramiteNombre: t.nombre,
-    moneda: 'USD', monto: 0,
+    moneda: 'USD', monto: 0, municipio: 'capital',
     cotizacion: ult ? ult.valor : 0, cotizacionFecha: ult ? ult.fecha : '', cotizacionFuente: ult ? 'BCP' : 'manual',
     jornal: Number(AJ.jornal) || 0,
     validezDias: Number(AJ.validezDias) || 30,
@@ -167,10 +168,28 @@ function montoGs(p = P) {
   return p.moneda === 'USD' ? Math.round((p.monto || 0) * (p.cotizacion || 0)) : Math.round(p.monto || 0);
 }
 
-function sugerenciaFila(f, p = P) {
-  const c = REGLAS.conceptos[f.key];
+// Porcentaje vigente de un concepto (Ajustes > reglas.js). Con variantes, según el municipio elegido.
+function pctConcepto(key, p = P) {
+  const c = REGLAS.conceptos[key];
   if (!c || !c.pct) return null;
-  return Math.round(montoGs(p) * c.pct / 100);
+  const variante = (p && p.municipio) || 'capital';
+  const clave = c.variantes ? `${key}.${variante}` : key;
+  const base = c.variantes ? c.variantes[variante].pct : c.pct;
+  const aj = (AJ.porcentajes || {})[clave];
+  return aj !== undefined && aj !== null && aj !== '' ? Number(aj) : base;
+}
+const fmtPct = n => String(n).replace('.', ',');
+
+function nombreConcepto(key, p = P) {
+  const c = REGLAS.conceptos[key];
+  if (!c) return '';
+  return c.variantes ? `${c.nombre} - ${c.variantes[(p && p.municipio) || 'capital'].etiqueta}` : c.nombre;
+}
+
+function sugerenciaFila(f, p = P) {
+  const pct = pctConcepto(f.key, p);
+  if (pct === null) return null;
+  return Math.round(montoGs(p) * pct / 100);
 }
 
 function sugerenciaHonorarios(p = P) {
@@ -184,6 +203,7 @@ function sugerenciaHonorarios(p = P) {
 // Aplica sugerencias a los valores "automáticos" y calcula totales.
 function calcular(p = P) {
   p.filas.forEach(f => {
+    if (f.key && REGLAS.conceptos[f.key] && REGLAS.conceptos[f.key].variantes) f.nombre = nombreConcepto(f.key, p);
     const s = sugerenciaFila(f, p);
     if (s !== null && f.auto) f.importe = s;
   });
@@ -211,6 +231,7 @@ function cargarEnEditor(p) {
   $('#f-monto').value = p.monto ? fmtDec(p.monto) : '';
   $('#f-cotizacion').value = p.cotizacion ? fmtDec(p.cotizacion) : '';
   $('#f-jornal').value = p.jornal ? fmt(p.jornal) : '';
+  $('#f-municipio').value = p.municipio || 'capital';
   $('#f-descuento').value = p.descuento ? fmt(p.descuento) : '';
   $('#f-honorarios').value = '';
   marcarMoneda();
@@ -231,7 +252,7 @@ function renderFilas() {
       div.innerHTML = `
         <div class="fila-nombre">
           ${f.key ? `<span></span>` : `<input type="text" class="nombre" placeholder="Nombre del concepto">`}
-          ${c && c.pct ? `<small class="nota">Sugerido: ${String(c.pct).replace('.', ',')} % del monto</small>` : ''}
+          ${c && c.pct ? `<small class="nota nota-pct"></small>` : ''}
         </div>
         <div class="fila-valores">
           <input type="text" inputmode="numeric" class="cant" aria-label="Cantidad">
@@ -257,6 +278,7 @@ function refrescar() {
   $('#bloque-monto').hidden = !t.monto;
   $('#lbl-monto').textContent = t.monto || 'Monto';
   $('#campo-cotizacion').hidden = P.moneda !== 'USD';
+  $('#campo-municipio').hidden = !P.filas.some(f => f.key && REGLAS.conceptos[f.key] && REGLAS.conceptos[f.key].variantes);
   $('#v-equivalente').textContent = 'Gs. ' + fmt(montoGs());
   notaCotizacion();
 
@@ -265,6 +287,10 @@ function refrescar() {
     const imp = div.querySelector('.imp');
     if (imp !== activo) imp.value = f.importe ? fmt(f.importe) : '';
     const s = sugerenciaFila(f);
+    const np = div.querySelector('.nota-pct');
+    if (np) np.textContent = `Sugerido: ${fmtPct(pctConcepto(f.key))} % del monto`;
+    const nom = div.querySelector('.fila-nombre > span');
+    if (nom && nom.textContent !== f.nombre) nom.textContent = f.nombre;
     div.classList.toggle('manual', s !== null && !f.auto);
     const r = div.querySelector('.restaurar');
     if (r) r.hidden = !(s !== null && !f.auto);
@@ -368,6 +394,7 @@ function initEditor() {
   });
   $('#btn-bcp').addEventListener('click', () => traerCotizacion(true));
   $('#f-jornal').addEventListener('input', e => { enmascarar(e.target); P.jornal = parseNum(e.target.value); refrescar(); });
+  $('#f-municipio').addEventListener('change', e => { P.municipio = e.target.value; refrescar(); });
 
   $('#f-honorarios').addEventListener('input', e => {
     enmascarar(e.target); P.honorarios.importe = parseNum(e.target.value); P.honorarios.auto = false; refrescar();
@@ -427,7 +454,10 @@ function nombreArchivo(p) {
 
 async function crearPDF(p) {
   calcular(p);
-  const doc = await generarPDF(p, { validezDias: p.validezDias || AJ.validezDias });
+  const doc = await generarPDF(p, {
+    validezDias: p.validezDias || AJ.validezDias,
+    observacion: tramite(p.tramiteId).observacion ? (AJ.observacion || '') : '',
+  });
   const blob = doc.output('blob');
   Object.assign(ultimoPDF, { id: p.id, blob, nombre: nombreArchivo(p) });
   return { doc, blob };
@@ -629,14 +659,33 @@ function renderAjustes() {
     const h = document.createElement('h2'); h.textContent = sec === 'tributos' ? 'Tributos y tasas' : 'Gastos'; h.style.marginTop = '12px';
     cont.appendChild(h);
     Object.entries(REGLAS.conceptos).filter(([, c]) => c.seccion === sec).forEach(([key, c]) => {
+      if (c.pct) {
+        // Conceptos con porcentaje: uno por variante (p. ej. Capital / Otros municipios).
+        const claves = c.variantes
+          ? Object.keys(c.variantes).map(v => [`${key}.${v}`, `${c.nombre} - ${c.variantes[v].etiqueta}`, c.variantes[v].pct])
+          : [[key, c.nombre, c.pct]];
+        claves.forEach(([clave, nombre, base]) => {
+          const d = document.createElement('div'); d.className = 'sug';
+          d.innerHTML = `<span></span><div class="con-sufijo"><input type="text" inputmode="decimal" class="num" data-pct="${clave}"><span>% del monto</span></div>`;
+          d.querySelector('span').textContent = nombre;
+          const inp = d.querySelector('input');
+          const v = (AJ.porcentajes || {})[clave];
+          inp.value = fmtPct(v !== undefined && v !== null && v !== '' ? v : base);
+          inp.addEventListener('input', () => enmascarar(inp, 4));
+          cont.appendChild(d);
+        });
+        return;
+      }
       const d = document.createElement('div'); d.className = 'sug';
-      d.innerHTML = `<span></span>${c.pct ? `<span class="pct">${String(c.pct).replace('.', ',')} % del monto</span>` : `<input type="text" inputmode="numeric" class="num" data-key="${key}" placeholder="—">`}`;
+      d.innerHTML = `<span></span><input type="text" inputmode="numeric" class="num" data-key="${key}" placeholder="—">`;
       d.querySelector('span').textContent = c.nombre;
       const inp = d.querySelector('input');
-      if (inp) { inp.value = AJ.sugeridos[key] ? fmt(AJ.sugeridos[key]) : ''; inp.addEventListener('input', () => enmascarar(inp)); }
+      inp.value = AJ.sugeridos[key] ? fmt(AJ.sugeridos[key]) : '';
+      inp.addEventListener('input', () => enmascarar(inp));
       cont.appendChild(d);
     });
   });
+  $('#a-observacion').value = AJ.observacion ?? REGLAS.observacionPorDefecto;
   $('#version-app').textContent = `Versión ${CONFIG.version}`;
 }
 
@@ -660,6 +709,10 @@ function initAjustes() {
     AJ.validezDias = parseInt($('#a-validez').value, 10) || CONFIG.validezPorDefecto;
     AJ.sugeridos = {};
     $$('#lista-sugeridos input[data-key]').forEach(i => { const v = parseNum(i.value); if (v > 0) AJ.sugeridos[i.dataset.key] = v; });
+    AJ.porcentajes = {};
+    $$('#lista-sugeridos input[data-pct]').forEach(i => { if (i.value.trim() !== '') AJ.porcentajes[i.dataset.pct] = parseNum(i.value); });
+    AJ.observacion = $('#a-observacion').value.trim();
+    if (P) refrescar();
     store.set('ajustes', AJ);
     if (urlServicio()) {
       try { await api('guardarAjustes', { ajustes: AJ }); aviso('Ajustes guardados en todos los dispositivos.'); }

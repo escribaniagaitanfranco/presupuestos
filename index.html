@@ -67,6 +67,9 @@
           <small id="nota-cotizacion" class="nota"></small>
         </div>
         <label class="campo"><span>Jornal mínimo (Gs.)</span><input type="text" inputmode="numeric" id="f-jornal" class="num"></label>
+        <label class="campo" id="campo-municipio"><span>Municipio (impuesto a la transferencia)</span>
+          <select id="f-municipio"><option value="capital">Capital</option><option value="otros">Otros municipios</option></select>
+        </label>
         <div class="campo ancho equivalente"><span>Equivalente en guaraníes</span><strong id="v-equivalente">Gs. 0</strong></div>
       </div>
     </div>
@@ -146,9 +149,15 @@
     </div>
 
     <div class="tarjeta">
-      <h2>Montos sugeridos por concepto</h2>
-      <p class="nota">Se completan solos al empezar un presupuesto. Dejá vacío lo que no quieras sugerir. Los conceptos con porcentaje se calculan sobre el monto de la operación.</p>
+      <h2>Porcentajes y montos sugeridos</h2>
+      <p class="nota">Los porcentajes se calculan sobre el monto de la operación. Los montos fijos se completan solos al empezar un presupuesto; dejá vacío lo que no quieras sugerir. Todo se puede cambiar después en cada presupuesto.</p>
       <div id="lista-sugeridos"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Observación al pie</h2>
+      <p class="nota">Aparece al final del PDF en las transferencias de vehículo e inmueble. Dejala vacía para no mostrarla.</p>
+      <textarea id="a-observacion" rows="3"></textarea>
     </div>
 
     <button type="button" class="btn primario ancho-total" id="btn-guardar-ajustes">Guardar ajustes</button>

@@ -219,6 +219,23 @@ async function generarPDF(p, opts = {}) {
   notas.push(`Presupuesto válido por ${opts.validezDias || 30} días.`);
   fuente('normal', 6.9); color(C.muted);
   notas.forEach((n, i) => doc.text(n, X0, y + hRes - 2 - (notas.length - 1 - i) * 3.8));
+  y += hRes;
+
+  // ---------- Observación ----------
+  const obs = (opts.observacion || '').trim();
+  if (obs) {
+    fuente('normal', 7.8);
+    const lineas = doc.splitTextToSize(obs, W - 9);
+    const hObs = 6.2 + lineas.length * 3.6;
+    y += 7;
+    asegurar(hObs);
+    color(C.soft, 'fill'); doc.roundedRect(X0, y, W, hObs, 1.4, 1.4, 'F');
+    color(C.gold, 'fill'); doc.rect(X0, y, 0.9, hObs, 'F');
+    etiqueta('Observación', X0 + 4, y + 4);
+    fuente('normal', 7.8); color(C.ink);
+    doc.text(lineas, X0 + 4, y + 7.6, { lineHeightFactor: 1.3 });
+    y += hObs;
+  }
 
   pie();
   doc.setProperties({ title: `Presupuesto ${p.numero || ''} - ${p.cliente || ''}`.trim(), author: 'Escribanía Gaitán Franco' });

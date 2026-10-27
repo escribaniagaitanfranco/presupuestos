@@ -148,6 +148,12 @@ input.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Ajustes: sugeridos */
 .sug { display: grid; grid-template-columns: 1fr 130px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .sug .pct { text-align: right; color: var(--muted); font-size: 13px; }
+.con-sufijo { display: flex; align-items: center; gap: 6px; }
+.con-sufijo input { width: 80px; }
+.con-sufijo span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.sug:has(.con-sufijo) { grid-template-columns: 1fr auto; }
+textarea { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 15px; resize: vertical; }
+textarea:focus { outline: none; border-color: var(--navy-2); box-shadow: 0 0 0 3px rgba(44,50,99,.12); }
 
 /* Diálogo y avisos */
 dialog { border: 0; border-radius: 14px; padding: 18px; max-width: min(420px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,.25); }

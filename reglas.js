@@ -23,6 +23,12 @@ const REGLAS = {
     ],
   },
 
+  // Observación al pie del PDF en los trámites marcados con observacion: true.
+  // (Texto inicial: se edita en Ajustes.)
+  observacionPorDefecto: 'La retención del Impuesto a la Transferencia correspondiente al vendedor no está incluida en el presente presupuesto.',
+
+  // Los porcentajes (pct) son los valores iniciales: los que se cargan en Ajustes tienen prioridad.
+
   // Catálogo de conceptos.
   //  seccion: 'tributos' | 'gastos'
   //  pct:     porcentaje sobre el monto de la operación en Gs. (sugerencia automática)
@@ -33,7 +39,11 @@ const REGLAS = {
     tasas_automotor:    { nombre: 'Tasas Registro del Automotor', seccion: 'tributos' },
     chapa_mercosur:     { nombre: 'Chapa Mercosur a elección', seccion: 'tributos' },
     cedula_verde:       { nombre: 'Cédula verde adicional', seccion: 'tributos' },
-    imp_municipal:      { nombre: 'Imp. a la Transferencia Municipal', seccion: 'tributos', pct: 0.85 }, // PROVISORIO
+    imp_municipal:      { nombre: 'Imp. a la Transferencia Municipal', seccion: 'tributos', pct: 0.85,
+                          variantes: {                                   // se elige en el presupuesto
+                            capital: { etiqueta: 'Capital', pct: 0.85 },          // PROVISORIO
+                            otros:   { etiqueta: 'Otros municipios', pct: 0.85 }, // PROVISORIO
+                          } },
     tasas_registrales:  { nombre: 'Tasas registrales', seccion: 'tributos' },
 
     gastos_admin:       { nombre: 'Gastos administrativos', seccion: 'gastos' },
@@ -53,13 +63,13 @@ const REGLAS = {
   //  escala: true = sugerir honorarios con la escala del art. 4.º
   tramites: [
     {
-      id: 'vehiculo', nombre: 'Transferencia de vehículo', monto: 'Precio de venta', escala: true,
+      id: 'vehiculo', nombre: 'Transferencia de vehículo', monto: 'Precio de venta', escala: true, observacion: true,
       conceptos: ['tasa_judicial', 'tasa_fija', 'tasas_automotor', 'chapa_mercosur', 'cedula_verde', 'imp_municipal',
                   'gastos_admin', 'cert_dominio', 'libre_disposicion', 'vigencia_poder', 'vigencia_separacion',
                   'testimonio', 'inscripcion', 'cancelacion_prenda', 'cert_catastral'],
     },
     {
-      id: 'inmueble', nombre: 'Transferencia de inmueble', monto: 'Precio de venta', escala: true,
+      id: 'inmueble', nombre: 'Transferencia de inmueble', monto: 'Precio de venta', escala: true, observacion: true,
       conceptos: ['tasa_judicial', 'imp_municipal', 'tasas_registrales',
                   'gastos_admin', 'cert_dominio', 'cert_catastral', 'cert_no_adeudar', 'libre_disposicion',
                   'vigencia_poder', 'vigencia_separacion', 'testimonio', 'inscripcion'],
