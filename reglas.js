@@ -37,7 +37,8 @@ const REGLAS = {
   //  pct:     porcentaje sobre el monto de la operación en Gs. (sugerencia automática)
   //  fijo:    monto fijo que se suma al porcentaje (solo si hay monto)
   //  jornales: Tabla de Costos del Colegio de Escribanos (columna "Hasta 150 km"):
-  //            monto = jornales × jornal mínimo + IVA 10 %. Se precarga en todos los trámites.
+  //            monto = jornales × jornal mínimo + IVA 10 %.
+  //  enTodos: true = se precarga en todos los trámites; sin él, solo en los que lo incluyen.
   //  PROVISORIO = porcentaje ficticio hasta recibir las tablas reales.
   conceptos: {
     tasa_judicial:      { nombre: 'Tasa judicial por transferencia', seccion: 'tributos', pct: 0.85 }, // PROVISORIO
@@ -53,16 +54,16 @@ const REGLAS = {
                           } },
     tasas_registrales:  { nombre: 'Tasas registrales', seccion: 'tributos' },
 
-    gastos_admin:       { nombre: 'Gastos administrativos', seccion: 'gastos', jornales: 5 },
-    cert_dominio:       { nombre: 'Certificado de Condiciones de Dominio', seccion: 'gastos' },
-    libre_disposicion:  { nombre: 'Libre disposición de bienes - vendedor', seccion: 'gastos' },
-    vigencia_poder:     { nombre: 'Vigencia de poder', seccion: 'gastos' },
-    vigencia_separacion:{ nombre: 'Vigencia de separación de bienes', seccion: 'gastos' },
-    testimonio:         { nombre: 'Expedición de 1.º testimonio', seccion: 'gastos', jornales: 2 },
-    inscripcion:        { nombre: 'Inscripción registral', seccion: 'gastos', jornales: 2 },
+    gastos_admin:       { nombre: 'Gastos administrativos', seccion: 'gastos', jornales: 5, enTodos: true },
+    cert_dominio:       { nombre: 'Certificado de Condiciones de Dominio', seccion: 'gastos', jornales: 2 },
+    libre_disposicion:  { nombre: 'Libre disposición de bienes - vendedor', seccion: 'gastos', jornales: 2 },
+    vigencia_poder:     { nombre: 'Vigencia de poder', seccion: 'gastos', jornales: 2 },
+    vigencia_separacion:{ nombre: 'Vigencia de separación de bienes', seccion: 'gastos', jornales: 2 },
+    testimonio:         { nombre: 'Expedición de 1.º testimonio', seccion: 'gastos', jornales: 2, enTodos: true },
+    inscripcion:        { nombre: 'Inscripción registral', seccion: 'gastos', jornales: 2, enTodos: true },
     cancelacion_prenda: { nombre: 'Cancelación de prenda', seccion: 'gastos' },
-    cert_catastral:     { nombre: 'Certificado catastral', seccion: 'gastos', jornales: 2 },
-    cert_no_adeudar:    { nombre: 'Certificado de no adeudar (municipal)', seccion: 'gastos', jornales: 2 },
+    cert_catastral:     { nombre: 'Certificado catastral', seccion: 'gastos', jornales: 2, enTodos: true },
+    cert_no_adeudar:    { nombre: 'Certificado de no adeudar (municipal)', seccion: 'gastos', jornales: 2, enTodos: true },
   },
 
   // Plantillas por trámite: qué filas aparecen al elegirlo.

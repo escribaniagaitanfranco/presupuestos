@@ -154,8 +154,8 @@ function importeSugerido(key) {
   return aj > 0 ? aj : (montoTabla(key) || 0);
 }
 
-// Los conceptos de la tabla se precargan en todos los trámites (se suprimen con cantidad 0).
-const conceptosTabla = () => Object.keys(REGLAS.conceptos).filter(k => REGLAS.conceptos[k].jornales);
+// Los conceptos de la tabla marcados enTodos se precargan en todos los trámites (se suprimen con cantidad 0).
+const conceptosTabla = () => Object.keys(REGLAS.conceptos).filter(k => REGLAS.conceptos[k].enTodos);
 
 function filasDeTramite(t) {
   const keys = [...t.conceptos, ...conceptosTabla().filter(k => !t.conceptos.includes(k))];
