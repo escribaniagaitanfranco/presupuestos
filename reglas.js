@@ -23,7 +23,10 @@ const REGLAS = {
     ],
   },
 
-  // Observación al pie del PDF en los trámites marcados con observacion: true.
+  // IVA que se suma a los gastos de la Tabla de Costos del Colegio de Escribanos.
+  ivaGastos: 0.10,
+
+  // Observación al pie del PDF: solo en Transferencia de inmueble.
   // (Texto inicial: se edita en Ajustes.)
   observacionPorDefecto: 'La retención del Impuesto a la Transferencia correspondiente al vendedor no está incluida en el presente presupuesto.',
 
@@ -33,6 +36,8 @@ const REGLAS = {
   //  seccion: 'tributos' | 'gastos'
   //  pct:     porcentaje sobre el monto de la operación en Gs. (sugerencia automática)
   //  fijo:    monto fijo que se suma al porcentaje (solo si hay monto)
+  //  jornales: Tabla de Costos del Colegio de Escribanos (columna "Hasta 150 km"):
+  //            monto = jornales × jornal mínimo + IVA 10 %. Se precarga en todos los trámites.
   //  PROVISORIO = porcentaje ficticio hasta recibir las tablas reales.
   conceptos: {
     tasa_judicial:      { nombre: 'Tasa judicial por transferencia', seccion: 'tributos', pct: 0.85 }, // PROVISORIO
@@ -48,16 +53,16 @@ const REGLAS = {
                           } },
     tasas_registrales:  { nombre: 'Tasas registrales', seccion: 'tributos' },
 
-    gastos_admin:       { nombre: 'Gastos administrativos', seccion: 'gastos' },
+    gastos_admin:       { nombre: 'Gastos administrativos', seccion: 'gastos', jornales: 5 },
     cert_dominio:       { nombre: 'Certificado de Condiciones de Dominio', seccion: 'gastos' },
     libre_disposicion:  { nombre: 'Libre disposición de bienes - vendedor', seccion: 'gastos' },
     vigencia_poder:     { nombre: 'Vigencia de poder', seccion: 'gastos' },
     vigencia_separacion:{ nombre: 'Vigencia de separación de bienes', seccion: 'gastos' },
-    testimonio:         { nombre: 'Expedición de 1.º testimonio', seccion: 'gastos' },
-    inscripcion:        { nombre: 'Inscripción registral', seccion: 'gastos' },
+    testimonio:         { nombre: 'Expedición de 1.º testimonio', seccion: 'gastos', jornales: 2 },
+    inscripcion:        { nombre: 'Inscripción registral', seccion: 'gastos', jornales: 2 },
     cancelacion_prenda: { nombre: 'Cancelación de prenda', seccion: 'gastos' },
-    cert_catastral:     { nombre: 'Certificado catastral', seccion: 'gastos' },
-    cert_no_adeudar:    { nombre: 'Certificado de no adeudar (municipal)', seccion: 'gastos' },
+    cert_catastral:     { nombre: 'Certificado catastral', seccion: 'gastos', jornales: 2 },
+    cert_no_adeudar:    { nombre: 'Certificado de no adeudar (municipal)', seccion: 'gastos', jornales: 2 },
   },
 
   // Plantillas por trámite: qué filas aparecen al elegirlo.
@@ -65,13 +70,13 @@ const REGLAS = {
   //  escala: true = sugerir honorarios con la escala del art. 4.º
   tramites: [
     {
-      id: 'vehiculo', nombre: 'Transferencia de vehículo', monto: 'Precio de venta', escala: true, observacion: true,
+      id: 'vehiculo', nombre: 'Transferencia de vehículo', monto: 'Precio de venta', escala: true,
       conceptos: ['tasa_judicial', 'tasa_fija', 'tasas_automotor', 'chapa_mercosur', 'cedula_verde',
                   'gastos_admin', 'cert_dominio', 'libre_disposicion', 'vigencia_poder', 'vigencia_separacion',
                   'testimonio', 'inscripcion', 'cancelacion_prenda', 'cert_catastral'],
     },
     {
-      id: 'inmueble', nombre: 'Transferencia de inmueble', monto: 'Precio de venta', escala: true, observacion: true,
+      id: 'inmueble', nombre: 'Transferencia de inmueble', monto: 'Precio de venta', escala: true,
       conceptos: ['tasa_judicial', 'imp_municipal', 'tasas_registrales',
                   'gastos_admin', 'cert_dominio', 'cert_catastral', 'cert_no_adeudar', 'libre_disposicion',
                   'vigencia_poder', 'vigencia_separacion', 'testimonio', 'inscripcion'],

@@ -143,6 +143,13 @@ input.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: #fff; color: var(--navy); text-decoration: none; cursor: pointer; font-weight: 600;
 }
 .item-acciones .borrar { color: var(--red); margin-left: auto; }
+/* Dos filas: las acciones de uso diario arriba, las secundarias abajo y más discretas. */
+.item-acciones.principales { display: grid; grid-template-columns: repeat(3, 1fr); }
+.item-acciones.principales button { padding: 8px 6px; }
+.item-acciones.principales [data-a="vista"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.item-acciones.secundarias { margin-top: 6px; }
+.item-acciones.secundarias button, .item-acciones.secundarias a { background: var(--soft); border-color: transparent; font-weight: 500; }
+@media (min-width: 560px) { .item-acciones.principales { display: flex; } }
 .etiqueta { font-size: 11px; padding: 2px 7px; border-radius: 99px; background: #fff3d6; color: #8a5a00; margin-left: 6px; font-weight: 600; }
 
 /* Ajustes: sugeridos */
@@ -154,6 +161,7 @@ input.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sug:has(.con-sufijo) { grid-template-columns: 1fr auto; }
 .sug .sug-fijo { grid-column: 1; text-align: right; font-size: 12px; color: var(--muted); }
 .sug input[data-fijo] { width: 130px; justify-self: end; }
+.sug .nota { display: block; }
 textarea { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 15px; resize: vertical; }
 textarea:focus { outline: none; border-color: var(--navy-2); box-shadow: 0 0 0 3px rgba(44,50,99,.12); }
 
@@ -187,6 +195,33 @@ dialog p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
 .con-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .avanzado { margin-top: 14px; font-size: 13px; color: var(--muted); }
 .avanzado summary { cursor: pointer; margin-bottom: 8px; }
+
+/* Vista previa del PDF */
+body.con-visor { overflow: hidden; }
+.visor {
+  position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column;
+  background: #525659;
+}
+.visor-barra {
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: var(--navy); color: #fff; border-bottom: 3px solid var(--gold);
+}
+.visor-barra strong { font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.visor-cerrar {
+  flex: none; background: rgba(255,255,255,.14); color: #fff; border: 0; border-radius: 9px;
+  padding: 9px 13px; font-weight: 600; font-size: 15px; cursor: pointer;
+}
+/* En iPhone el iframe crece con el PDF: el contenedor es el que se desplaza. */
+.visor-cuerpo { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; position: relative; }
+.visor-cuerpo iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.visor-estado:empty { display: none; }
+.visor-estado { color: #fff; text-align: center; padding: 40px 24px; font-size: 14px; }
+.visor-pie {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line);
+}
+.visor-pie .btn { flex: 1; max-width: 200px; }
 
 /* Pantalla de PIN */
 .bloqueo {

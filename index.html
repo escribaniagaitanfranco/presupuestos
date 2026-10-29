@@ -166,7 +166,6 @@
         <label class="check"><input type="checkbox" id="t-usa-monto"><span>Lleva monto de la operación</span></label>
         <label class="campo ancho" id="t-monto-campo"><span>Cómo se llama el monto</span><input type="text" id="t-monto" placeholder="Monto"></label>
         <label class="check"><input type="checkbox" id="t-escala"><span>Sugerir honorarios con la escala (Ley 1307)</span></label>
-        <label class="check"><input type="checkbox" id="t-observacion"><span>Mostrar la observación al pie</span></label>
         <p class="nota">Conceptos que aparecen al elegirlo (después se pueden agregar otros a mano):</p>
         <div id="t-conceptos" class="t-conceptos"></div>
         <div class="con-botones">
@@ -178,7 +177,7 @@
 
     <div class="tarjeta">
       <h2>Observación al pie</h2>
-      <p class="nota">Aparece al final del PDF en las transferencias de vehículo e inmueble. Dejala vacía para no mostrarla.</p>
+      <p class="nota">Aparece al final del PDF solo en las transferencias de inmueble. Dejala vacía para no mostrarla.</p>
       <textarea id="a-observacion" rows="3"></textarea>
     </div>
 
@@ -207,6 +206,22 @@
   <p id="dlg-texto"></p>
   <div class="dlg-acciones" id="dlg-acciones"></div>
 </dialog>
+
+<!-- Vista previa del PDF (desde Historial) -->
+<div id="visor" class="visor" role="dialog" aria-modal="true" aria-labelledby="visor-titulo" hidden>
+  <div class="visor-barra">
+    <button type="button" class="visor-cerrar" id="visor-cerrar" aria-label="Cerrar vista previa">✕ Cerrar</button>
+    <strong id="visor-titulo">Vista previa</strong>
+  </div>
+  <div class="visor-cuerpo" id="visor-cuerpo">
+    <iframe id="visor-pdf" title="Vista previa del PDF"></iframe>
+    <p class="nota visor-estado" id="visor-estado"></p>
+  </div>
+  <div class="visor-pie">
+    <button type="button" class="btn" id="visor-descargar">Descargar</button>
+    <button type="button" class="btn primario" id="visor-compartir">Compartir</button>
+  </div>
+</div>
 
 <div id="aviso" class="aviso" role="status"></div>
 

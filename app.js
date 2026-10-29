@@ -141,10 +141,27 @@ function dialogo(titulo, texto, acciones = [{ txt: 'Cerrar' }]) {
 // =====================================================================
 //  PRESUPUESTO: modelo y cálculos
 // =====================================================================
+// Monto de la Tabla de Costos del Colegio: jornales × jornal mínimo + IVA (null si el concepto no está en la tabla).
+function montoTabla(key, jornal = AJ.jornal) {
+  const c = REGLAS.conceptos[key];
+  if (!c || !c.jornales) return null;
+  return Math.round(c.jornales * (Number(jornal) || 0) * (1 + REGLAS.ivaGastos));
+}
+
+// Monto que se precarga: el cargado en Ajustes tiene prioridad sobre el de la tabla.
+function importeSugerido(key) {
+  const aj = Number(AJ.sugeridos[key]) || 0;
+  return aj > 0 ? aj : (montoTabla(key) || 0);
+}
+
+// Los conceptos de la tabla se precargan en todos los trámites (se suprimen con cantidad 0).
+const conceptosTabla = () => Object.keys(REGLAS.conceptos).filter(k => REGLAS.conceptos[k].jornales);
+
 function filasDeTramite(t) {
-  return t.conceptos.map(key => {
+  const keys = [...t.conceptos, ...conceptosTabla().filter(k => !t.conceptos.includes(k))];
+  return keys.filter(key => REGLAS.conceptos[key]).map(key => {
     const c = REGLAS.conceptos[key];
-    return { key, nombre: c.nombre, seccion: c.seccion, cant: 1, importe: Number(AJ.sugeridos[key]) || 0, auto: !!c.pct };
+    return { key, nombre: c.nombre, seccion: c.seccion, cant: 1, importe: importeSugerido(key), auto: !!c.pct };
   });
 }
 
@@ -312,7 +329,7 @@ function refrescar() {
     div.classList.toggle('manual', s !== null && !f.auto);
     const r = div.querySelector('.restaurar');
     if (r) r.hidden = !(s !== null && !f.auto);
-    div.classList.toggle('vacia', !(f.importe > 0));
+    div.classList.toggle('vacia', !(f.importe > 0 && f.cant > 0));
     div.querySelector('.total-linea').textContent =
       f.cant > 1 && f.importe ? `${f.cant} × ${fmt(f.importe)} = ${fmt(f.cant * f.importe)}` : '';
   });
@@ -476,11 +493,14 @@ function nombreArchivo(p) {
   return `${p.fecha} - ${limpio(p.cliente) || 'Sin nombre'} - ${limpio(p.tramiteNombre)}.pdf`;
 }
 
+// La observación al pie va solo en las transferencias de inmueble.
+const llevaObservacion = p => p.tramiteId === 'inmueble';
+
 async function crearPDF(p) {
   calcular(p);
   const doc = await generarPDF(p, {
     validezDias: p.validezDias || AJ.validezDias,
-    observacion: tramite(p.tramiteId).observacion ? (AJ.observacion || '') : '',
+    observacion: llevaObservacion(p) ? (AJ.observacion || '') : '',
   });
   const blob = doc.output('blob');
   Object.assign(ultimoPDF, { id: p.id, blob, nombre: nombreArchivo(p) });
@@ -614,10 +634,13 @@ function renderHistorial() {
     li.innerHTML = `
       <div class="item-cab"><strong></strong><span class="item-total"></span></div>
       <div class="item-sub"></div>
-      <div class="item-acciones">
-        <button data-a="abrir">Abrir</button>
-        <button data-a="duplicar">Duplicar</button>
+      <div class="item-acciones principales">
+        <button data-a="vista">Vista previa</button>
         <button data-a="compartir">Compartir</button>
+        <button data-a="abrir">Abrir</button>
+      </div>
+      <div class="item-acciones secundarias">
+        <button data-a="duplicar">Duplicar</button>
         ${p.driveUrl ? '<a data-a="drive" target="_blank" rel="noopener">Drive</a>' : ''}
         ${p.estado === 'pendiente' ? '<button data-a="subir">Subir a Drive</button>' : ''}
         <button data-a="borrar" class="borrar">Borrar</button>
@@ -635,7 +658,12 @@ function renderHistorial() {
         const n = Object.assign(clonar(p), { id: uid(), numero: null, fecha: hoyISO(), driveFileId: null, driveUrl: null, estado: 'borrador', actualizado: null });
         cargarEnEditor(n); mostrarVista('editor'); aviso('Copia lista para editar.');
       }
-      if (a === 'compartir') { e.target.textContent = '…'; try { await compartir(clonar(p)); } finally { e.target.textContent = 'Compartir'; } }
+      if (a === 'vista') vistaPrevia(congelado(p));
+      if (a === 'compartir') {
+        e.target.textContent = '…';
+        ultimoPDF.id = null; // se genera con lo guardado, no con un PDF anterior del editor
+        try { await compartir(congelado(p)); } finally { e.target.textContent = 'Compartir'; }
+      }
       if (a === 'borrar') return confirmarBorrado(p);
       if (a === 'subir') {
         e.target.textContent = 'Subiendo…';
@@ -644,6 +672,59 @@ function renderHistorial() {
       }
     });
     ul.appendChild(li);
+  });
+}
+
+// Copia de un presupuesto guardado para generar su PDF tal cual: no vuelve a aplicar sugerencias
+// (si cambiaron los porcentajes en Ajustes, los montos guardados no se tocan).
+function congelado(p) {
+  const q = clonar(p);
+  (q.filas || []).forEach(f => { f.auto = false; });
+  q.honorarios = Object.assign({ importe: 0 }, q.honorarios, { auto: false });
+  return q;
+}
+
+// ---------- Vista previa del PDF (pantalla completa, sin abrir para edición) ----------
+const VISOR = { p: null, url: null };
+
+async function vistaPrevia(p) {
+  const fr = $('#visor-pdf'), est = $('#visor-estado');
+  VISOR.p = p;
+  $('#visor-titulo').textContent = `${p.numero ? 'N.º ' + p.numero : 'Borrador'} · ${p.cliente || 'Sin nombre'}`;
+  fr.hidden = true; est.textContent = 'Generando PDF…';
+  $$('#visor-descargar, #visor-compartir').forEach(b => { b.disabled = true; });
+  $('#visor').hidden = false;
+  document.body.classList.add('con-visor');
+  try {
+    const { blob } = await crearPDF(p);
+    if (VISOR.p !== p) return; // se cerró (o se abrió otro) mientras se generaba
+    VISOR.url = URL.createObjectURL(blob);
+    $$('#visor-descargar, #visor-compartir').forEach(b => { b.disabled = false; });
+    if (navigator.pdfViewerEnabled === false) {
+      est.textContent = 'Este dispositivo no muestra el PDF dentro de la app. Tocá Descargar o Compartir para verlo.';
+      return;
+    }
+    fr.src = VISOR.url;
+    fr.hidden = false; est.textContent = '';
+  } catch (e) {
+    if (VISOR.p === p) est.textContent = 'No se pudo generar el PDF: ' + e.message;
+  }
+}
+
+function cerrarVisor() {
+  $('#visor').hidden = true;
+  document.body.classList.remove('con-visor');
+  $('#visor-pdf').src = 'about:blank';
+  if (VISOR.url) URL.revokeObjectURL(VISOR.url);
+  VISOR.p = null; VISOR.url = null;
+}
+
+function initVisor() {
+  $('#visor-cerrar').addEventListener('click', cerrarVisor);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#visor').hidden) cerrarVisor(); });
+  $('#visor-compartir').addEventListener('click', () => { if (VISOR.p) compartir(VISOR.p); });
+  $('#visor-descargar').addEventListener('click', () => {
+    if (VISOR.p && ultimoPDF.id === VISOR.p.id) descargar(ultimoPDF.blob, ultimoPDF.nombre);
   });
 }
 
@@ -727,7 +808,6 @@ function editarTramite(id) {
   $('#t-usa-monto').checked = t ? !!t.monto : false;
   $('#t-monto').value = t && t.monto ? t.monto : 'Monto';
   $('#t-escala').checked = t ? !!t.escala : false;
-  $('#t-observacion').checked = t ? !!t.observacion : false;
   const elegidos = new Set(t ? t.conceptos : ['gastos_admin', 'testimonio']);
   const cont = $('#t-conceptos');
   cont.innerHTML = '';
@@ -761,7 +841,6 @@ async function guardarTramite() {
     id, nombre,
     monto: $('#t-usa-monto').checked ? ($('#t-monto').value.trim() || 'Monto') : null,
     escala: $('#t-usa-monto').checked && $('#t-escala').checked,
-    observacion: $('#t-observacion').checked,
     conceptos: $$('#t-conceptos input:checked').map(i => i.value),
   };
   const lista = (AJ.tramitesPropios || []).filter(x => x.id !== id);
@@ -829,6 +908,13 @@ function renderAjustes() {
       d.innerHTML = `<span></span><input type="text" inputmode="numeric" class="num" data-key="${key}" placeholder="—">`;
       d.querySelector('span').textContent = c.nombre;
       const inp = d.querySelector('input');
+      const tabla = montoTabla(key, parseNum($('#a-jornal').value) || AJ.jornal);
+      if (tabla !== null) {
+        // Vacío = se usa la tabla del Colegio (se muestra como sugerencia gris).
+        inp.placeholder = fmt(tabla);
+        d.querySelector('span').insertAdjacentHTML('beforeend',
+          `<small class="nota">Tabla del Colegio: ${c.jornales} jornales + IVA. Dejalo vacío para usarla.</small>`);
+      }
       inp.value = AJ.sugeridos[key] ? fmt(AJ.sugeridos[key]) : '';
       inp.addEventListener('input', () => enmascarar(inp));
       cont.appendChild(d);
@@ -916,6 +1002,7 @@ function init() {
   initEditor();
   initAjustes();
   initTramites();
+  initVisor();
   initBloqueo();
   $$('.barra-nav button').forEach(b => b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
   $('#buscar').addEventListener('input', renderHistorial);
